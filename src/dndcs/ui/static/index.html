@@ -12,18 +12,27 @@
     <p>Load a character JSON to view it.</p>
   </header>
 
-  <main>
-    <div class="card">
+<main>
+  <div class="card">
+    <div class="row">
+      <label>Module:</label>
+      <select id="moduleSelect"></select>
+      <button id="newCharBtn" class="btn">New Character</button>
+    </div>
+
+    <div class="row">
       <label class="file-label">
         <input type="file" id="file" accept="application/json,.json" />
-        <span>Choose character JSON…</span>
+        <span>Open character JSON…</span>
       </label>
-
-      <div id="meta" class="meta"></div>
-      <pre id="output" class="output" aria-live="polite">(no file loaded yet)</pre>
+      <button id="deriveBtn" class="btn">Derive</button>
+      <button id="validateBtn" class="btn">Validate</button>
     </div>
-  </main>
 
+    <div id="meta" class="meta"></div>
+    <pre id="output" class="output" aria-live="polite">(no data yet)</pre>
+  </div>
+</main>
   <footer>
     <small>Local UI – file is read in your browser only.</small>
   </footer>
