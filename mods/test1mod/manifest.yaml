@@ -1,0 +1,8 @@
+id: test1mod
+name: Test Module
+version: 0.1.0
+entry_point: main.py:TestModule
+subsystems:
+  - items
+  - feats
+  - spells
