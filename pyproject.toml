@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dndcs"
+version = "0.1.0"
+description = "Modular backend for DnD character sheets"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["click>=8.1", "pydantic>=2.6", "PyYAML>=6.0"]
+
+[project.optional-dependencies]
+ui = [
+  "fastapi>=0.111",
+  "uvicorn[standard]>=0.29",
+]
+dev = ["pytest>=8.2", "black>=24.4", "ruff>=0.5", "mypy>=1.10"]
+
+[project.scripts]
+dndcs = "dndcs.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["dndcs*"]
+
+[tool.setuptools.package-data]
+"*" = ["*.yaml", "*.html", "*.js", "*.css"]

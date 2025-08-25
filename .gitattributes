@@ -1,0 +1,12 @@
+* text=auto
+# Keep code & data LF on checkout (portable)
+*.py   text eol=lf
+*.js   text eol=lf
+*.css  text eol=lf
+*.html text eol=lf
+*.json text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+# Windows scripts can stay CRLF
+*.bat  text eol=crlf
+*.ps1  text eol=crlf
