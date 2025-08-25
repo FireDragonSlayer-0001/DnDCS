@@ -2,41 +2,174 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <title>DnDCS – Barebones UI</title>
+  <title>DnDCS – Character Manager</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
   <header>
-    <h1>DnDCS</h1>
-    <p>Load a character JSON to view it.</p>
-  </header>
-
-<main>
-  <div class="card">
-    <div class="row">
-      <label>Module:</label>
-      <select id="moduleSelect"></select>
-      <button id="newCharBtn" class="btn">New Character</button>
+    <div class="brand">
+      <h1>DnDCS</h1>
+      <span class="sub">Engine + Modules</span>
     </div>
+    <div class="toolbar">
+      <label>Module</label>
+      <select id="moduleSelect"></select>
 
-    <div class="row">
+      <button id="newCharBtn" class="btn">New Character</button>
+
       <label class="file-label">
         <input type="file" id="file" accept="application/json,.json" />
-        <span>Open character JSON…</span>
+        <span>Open JSON…</span>
       </label>
+
+      <button id="saveBtn" class="btn">Save JSON</button>
       <button id="deriveBtn" class="btn">Derive</button>
       <button id="validateBtn" class="btn">Validate</button>
     </div>
+  </header>
 
-    <div id="meta" class="meta"></div>
-    <pre id="output" class="output" aria-live="polite">(no data yet)</pre>
-  </div>
-</main>
+  <section id="summary" class="summary">
+    <div><strong id="sName">—</strong> <span id="sLevel"></span></div>
+    <div>Module: <span id="sModule">—</span></div>
+    <div>PB: <span id="sPB">—</span></div>
+    <div>AC: <span id="sAC">—</span> <small id="sACsrc"></small></div>
+    <div id="sSpellcasting" class="hide">
+      Spell DC: <span id="sDC"></span> • Spell atk: <span id="sATK"></span> • Prepared: <span id="sPrepCount"></span>/<span id="sPrepCap"></span>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button data-tab="overview" class="tab active">Overview</button>
+    <button data-tab="abilities" class="tab">Abilities</button>
+    <button data-tab="spells" class="tab">Spells</button>
+    <button data-tab="items" class="tab">Items</button>
+    <button data-tab="feats" class="tab">Feats</button>
+    <button data-tab="notes" class="tab">Notes</button>
+    <button data-tab="raw" class="tab">Raw JSON</button>
+  </nav>
+
+  <main>
+    <section id="tab-overview" class="panel active">
+      <div class="grid2">
+        <div class="card">
+          <h3>Basics</h3>
+          <div class="row">
+            <label>Name</label>
+            <input id="iName" type="text" placeholder="Character name" />
+          </div>
+          <div class="row">
+            <label>Level</label>
+            <input id="iLevel" type="number" min="1" max="20" />
+          </div>
+          <div class="row">
+            <label>Module</label>
+            <input id="iModule" type="text" disabled />
+          </div>
+        </div>
+        <div class="card">
+          <h3>Saving Throw Proficiencies</h3>
+          <div class="row wrap" id="saveProfRow">
+            <!-- checkboxes populated by JS -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-abilities" class="panel">
+      <div class="card">
+        <h3>Ability Scores</h3>
+        <table class="table">
+          <thead><tr><th>Ability</th><th>Score</th><th>Mod</th><th>Actions</th></tr></thead>
+          <tbody id="abilitiesBody"></tbody>
+        </table>
+      </div>
+      <div class="card">
+        <h3>Saving Throws</h3>
+        <table class="table">
+          <thead><tr><th>Ability</th><th>Save</th></tr></thead>
+          <tbody id="savesBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-spells" class="panel">
+      <div class="card">
+        <h3>Spellbook</h3>
+        <div class="row">
+          <label>Level</label>
+          <select id="spellLevel">
+            <option value="C">Cantrips</option>
+            <option value="1">Level 1</option><option value="2">Level 2</option>
+            <option value="3">Level 3</option><option value="4">Level 4</option>
+            <option value="5">Level 5</option><option value="6">Level 6</option>
+            <option value="7">Level 7</option><option value="8">Level 8</option>
+            <option value="9">Level 9</option>
+          </select>
+          <input id="spellName" type="text" placeholder="Spell name" />
+          <button id="addKnownBtn" class="btn">Add to Known</button>
+        </div>
+        <div class="row">
+          <label><input type="checkbox" id="showPreparedOnly" /> Show prepared only</label>
+        </div>
+
+        <div id="spellLists" class="spell-lists">
+          <!-- populated by JS: grid of 10 columns (C + 1..9) with known & prepared checkboxes -->
+        </div>
+      </div>
+    </section>
+
+    <section id="tab-items" class="panel">
+      <div class="card">
+        <h3>Items</h3>
+        <div class="row">
+          <input id="itemName" type="text" placeholder="Item name" />
+          <input id="itemQty" type="number" min="1" value="1" />
+          <input id="itemProps" type="text" placeholder='Props JSON (e.g. {"shield_bonus":2})' />
+          <button id="addItemBtn" class="btn">Add Item</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>Name</th><th>Qty</th><th>Props</th><th></th></tr></thead>
+          <tbody id="itemsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-feats" class="panel">
+      <div class="card">
+        <h3>Feats / Features</h3>
+        <div class="row">
+          <input id="featName" type="text" placeholder="Name" />
+          <input id="featDesc" type="text" placeholder="Description" />
+          <button id="addFeatBtn" class="btn">Add</button>
+        </div>
+        <table class="table">
+          <thead><tr><th>Name</th><th>Description</th><th></th></tr></thead>
+          <tbody id="featsBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="tab-notes" class="panel">
+      <div class="card">
+        <h3>Notes</h3>
+        <textarea id="notesArea" rows="12" placeholder="Write notes here…"></textarea>
+      </div>
+    </section>
+
+    <section id="tab-raw" class="panel">
+      <div class="card">
+        <h3>Raw JSON (read-only preview)</h3>
+        <pre id="rawOut" class="output">(no character loaded)</pre>
+      </div>
+    </section>
+  </main>
+
   <footer>
-    <small>Local UI – file is read in your browser only.</small>
+    <small>Local UI — nothing is uploaded. Use “Save JSON” to download your sheet.</small>
   </footer>
 
+  <dialog id="toast"></dialog>
   <script src="./app.js"></script>
 </body>
 </html>

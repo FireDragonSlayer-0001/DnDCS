@@ -13,6 +13,10 @@ def ui(host: str, port: int, no_open: bool):
     """Start local web UI and open it in your browser."""
     try:
         from dndcs.ui.server import serve
-    except Exception:
-        raise SystemExit("UI deps missing. Install with: pip install -e .[ui]")
+    except Exception as e:
+        import traceback, sys
+        click.echo("UI dependencies missing or import failed.", err=True)
+        click.echo('Tip (PowerShell): python -m pip install -e ".[ui]"', err=True)
+        click.echo(f"\nImport error: {e}\n{traceback.format_exc()}", err=True)
+        sys.exit(1)
     serve(host=host, port=port, open_browser=(not no_open))
