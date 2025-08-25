@@ -18,6 +18,10 @@ def _read_manifest(manifest_path: Path) -> Dict[str, Any]:
     man["__manifest_dir__"] = str(manifest_path.parent)
     return man
 
+def default_module_id() -> str:
+    # Allow override via env; otherwise stock 5e
+    return os.getenv("DNDCS_DEFAULT_MODULE_ID", "fivee_stock")
+
 
 # --- search roots -------------------------------------------------------------
 

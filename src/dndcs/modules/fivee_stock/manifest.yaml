@@ -1,0 +1,5 @@
+id: fivee_stock
+name: D&D 5e (Stock)
+version: 0.2.0
+entry_point: module.py:FiveEStockModule
+description: Built-in D&D 5e rules. Computes PB/AC/saves and Wizard spellcasting (full-caster slots).

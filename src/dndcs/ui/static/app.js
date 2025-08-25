@@ -400,15 +400,23 @@
       modules = data.modules || [];
       const sel = $("#moduleSelect");
       sel.innerHTML = "";
-      const saved = localStorage.getItem("dndcs.moduleId");
-      modules.forEach(m => {
-        const opt = el("option", { value: m.id }, `${m.name} (${m.version})`);
-        if (saved && saved === m.id) opt.selected = true;
-        sel.append(opt);
-      });
-      if (!sel.value && modules.length) sel.value = modules[0].id;
-      localStorage.setItem("dndcs.moduleId", sel.value);
-      sel.onchange = () => localStorage.setItem("dndcs.moduleId", sel.value);
+      // build options
+modules.forEach(m => {
+  const opt = el("option", { value: m.id }, `${m.name} (${m.version})`);
+  sel.append(opt);
+});
+
+// Prefer saved -> fivee_stock -> first available
+const saved = localStorage.getItem("dndcs.moduleId");
+let chosen = saved && modules.find(m => m.id === saved) ? saved : null;
+if (!chosen) {
+  const stock = modules.find(m => m.id === "fivee_stock");
+  chosen = stock ? stock.id : (modules[0]?.id || "");
+}
+sel.value = chosen;
+localStorage.setItem("dndcs.moduleId", chosen);
+sel.onchange = () => localStorage.setItem("dndcs.moduleId", sel.value);
+
     } catch (e) {
       toast("Failed to load modules"); console.error(e);
     }

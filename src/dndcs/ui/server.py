@@ -1,26 +1,28 @@
 from __future__ import annotations
 from pathlib import Path
-import os, threading, time, webbrowser
+import os, threading, time, webbrowser, logging
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
-import logging
+
+from dndcs.core import models, registry
 
 log = logging.getLogger("dndcs.ui")
 logging.basicConfig(level=logging.INFO)
 
-from dndcs.core import models, registry
 
 def _static_dir() -> Path:
     return Path(__file__).resolve().parent / "static"
+
 
 def _safe_join(base: Path, rel: str) -> Path:
     p = (base / rel).resolve()
     if os.path.commonpath([p, base.resolve()]) != str(base.resolve()):
         raise HTTPException(status_code=400, detail="Invalid asset path")
     return p
+
 
 def create_app() -> FastAPI:
     app = FastAPI(title="DnDCS UI", version="0.2.0")
@@ -31,7 +33,6 @@ def create_app() -> FastAPI:
 
     @app.get("/api/routes")
     def routes():
-        # quick debug helper
         return {"routes": [r.path for r in app.routes]}
 
     @app.get("/api/modules")
@@ -66,15 +67,20 @@ def create_app() -> FastAPI:
     @app.post("/api/new_character")
     async def api_new_character(req: Request):
         data = await req.json()
-        module_id = data.get("module_id")
-        if not module_id:
-            raise HTTPException(status_code=400, detail="module_id required")
+        module_id = data.get("module_id") or registry.default_module_id()
+
+        log.info(
+            "new_character: requested=%s; discovered=%s",
+            module_id, [m.get("id") for m in registry.discover_modules()]
+        )
+
         mod = registry.load_module_by_manifest_id(module_id)
         if mod is None:
             raise HTTPException(status_code=404, detail=f"Module '{module_id}' not found")
-        # templates from module
+
         abilities = {k: models.AbilityScore(name=k, score=v) for k, v in mod.template_abilities().items()}
         skills = [models.Skill(name=s["name"], ability=s["ability"]) for s in mod.template_skills()]
+
         char = models.Character(
             name=data.get("name", "New Hero"),
             level=int(data.get("level", 1)),
@@ -93,11 +99,17 @@ def create_app() -> FastAPI:
             char = models.Character.model_validate(payload)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid character: {e}")
+
+        log.info(
+            "derive: requested module=%s; discovered=%s",
+            char.module, [m.get("id") for m in registry.discover_modules()]
+        )
+
         mod = registry.load_module_by_manifest_id(char.module)
         if mod is None:
             raise HTTPException(status_code=404, detail=f"Module '{char.module}' not found")
+
         d = mod.derive(char)
-        # allow either Pydantic model or plain dict from module
         data: Dict[str, Any] = d.model_dump() if hasattr(d, "model_dump") else dict(d)
         return JSONResponse(data)
 
@@ -108,15 +120,18 @@ def create_app() -> FastAPI:
             char = models.Character.model_validate(payload)
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid character: {e}")
+
         mod = registry.load_module_by_manifest_id(char.module)
         if mod is None:
             raise HTTPException(status_code=404, detail=f"Module '{char.module}' not found")
+
         issues = list(mod.validate(char))
         return {"issues": issues}
 
-    # IMPORTANT: mount static LAST so /api/* routes are matched
+    # Mount static LAST so /api/* routes work
     app.mount("/", StaticFiles(directory=_static_dir(), html=True), name="static")
     return app
+
 
 def serve(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True) -> None:
     app = create_app()

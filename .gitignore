@@ -1,16 +1,15 @@
-# Python build artifacts
-*.egg-info/
-.dist-info/
-build/
-dist/
-.eggs/
 __pycache__/
 *.py[cod]
+*.egg-info/
+*.dist-info/
+.eggs/
+build/
+dist/
 .venv/
-
-# IDE/editor
 .vscode/
 .idea/
 
-/mods/*
-!/mods/.gitkeep
+# Local-only
+mods/*
+!mods/.gitkeep
+characters/*.json
