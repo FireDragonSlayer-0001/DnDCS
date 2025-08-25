@@ -1,0 +1,17 @@
+:root { --pad: 16px; --radius: 14px; --max: 920px; }
+* { box-sizing: border-box; }
+body { margin: 0; font-family: system-ui, Segoe UI, Roboto, Inter, Arial, sans-serif; background: #0f1115; color: #e8eaf0; }
+header, footer { max-width: var(--max); margin: 0 auto; padding: var(--pad); }
+header h1 { margin: 0 0 4px 0; font-weight: 650; }
+header p { margin: 0; opacity: 0.8; }
+main { display: flex; justify-content: center; padding: var(--pad); }
+.card { width: 100%; max-width: var(--max); background: #171a21; padding: var(--pad);
+  border-radius: var(--radius); box-shadow: 0 5px 24px rgba(0,0,0,.35); }
+.file-label { display: inline-flex; align-items: center; gap: 10px; padding: 10px 14px;
+  border: 1px solid #2a2f3a; border-radius: 10px; background: #1e232d; cursor: pointer; }
+.file-label input { display: none; }
+.meta { margin-top: 12px; opacity: 0.9; }
+.output { margin-top: 12px; padding: 12px; background: #0b0e13; border: 1px solid #2a2f3a;
+  border-radius: 10px; max-height: 70vh; overflow: auto; white-space: pre-wrap;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace; }
+footer { opacity: 0.7; text-align: center; }
