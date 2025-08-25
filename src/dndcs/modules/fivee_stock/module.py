@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Dict, Any, List, Optional
 from math import floor
 from dndcs.core import models
+from dndcs.core.module_base import ModuleBase
 
 ABILS = ("STR","DEX","CON","INT","WIS","CHA")
 SKILLS = [
@@ -120,9 +121,12 @@ def _wizard_block(char: models.Character, mods: Dict[str,int]) -> Optional[Dict[
         "slots": {str(i+1): slots[i] for i in range(9)},
     }
 
-class FiveEStockModule:
+class FiveEStockModule(ModuleBase):
     def __init__(self, manifest: Dict[str, Any]):
-        self.manifest = manifest
+        # Automatically pull in any subsystem folders declared in the manifest
+        # (items, feats, spells, etc.) so the module can extend itself without
+        # being a monolithic single file.
+        super().__init__(manifest)
 
     def id(self) -> str:
         return self.manifest.get("id", "fivee_stock")

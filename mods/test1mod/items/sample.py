@@ -1,0 +1,1 @@
+ITEMS = [{"name": "Test Sword"}]

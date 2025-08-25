@@ -31,7 +31,7 @@ dndcs ui
 
 The server listens on `http://127.0.0.1:8000` by default and opens in your browser. Use `--host`, `--port` and `--no-open` to control the startup behaviour.
 
-Rules modules are discovered automatically. Drop a module directory containing a `manifest.yaml` into `mods/` or `modules/` to extend the rules. The repository includes an example placeholder module for D&D 5e under `modules/fivee`.
+Rules modules are discovered automatically. Drop a module directory containing a `manifest.yaml` and a main file into `mods/` or `modules/` to extend the rules.  The manifest can declare a `subsystems` list so Python files placed in those named subfolders (for example `items/`, `feats` or `spells`) are pulled in automatically.  See `mods/test1mod` for a minimal structured example and `src/dndcs/modules/fivee_stock` for the built-in 5e implementation.
 
 For a minimal dependency-free CLI demo:
 
