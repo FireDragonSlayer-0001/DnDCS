@@ -6,7 +6,11 @@ dist/
 .eggs/
 __pycache__/
 *.py[cod]
+.venv/
 
 # IDE/editor
 .vscode/
 .idea/
+
+/mods/*
+!/mods/.gitkeep
