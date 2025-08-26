@@ -15,7 +15,14 @@ ui = [
   "fastapi>=0.111",
   "uvicorn[standard]>=0.29",
 ]
-dev = ["pytest>=8.2", "black>=24.4", "ruff>=0.5", "mypy>=1.10"]
+dev = [
+  "pytest>=8.2",
+  "pytest-cov>=5.0",
+  "coverage>=7.5",
+  "black>=24.4",
+  "ruff>=0.5",
+  "mypy>=1.10",
+]
 
 [project.scripts]
 dndcs = "dndcs.cli:main"
@@ -36,3 +43,10 @@ include = ["dndcs", "dndcs.*"]
   "modules/**/manifest.yaml",
   "modules/**/assets/**/*"
 ]
+
+[tool.coverage.run]
+branch = true
+source = ["src"]
+
+[tool.coverage.report]
+show_missing = true
