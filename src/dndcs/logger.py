@@ -22,19 +22,23 @@ def init_logging(log_dir: str | Path = "logs", console_level: int = logging.WARN
     log_path.mkdir(parents=True, exist_ok=True)
     _LOG_FILE = log_path / f"dndcs_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
-    logger = logging.getLogger("dndcs")
-    logger.setLevel(logging.DEBUG)
+    root_logger = logging.getLogger()
+    root_logger.setLevel(logging.DEBUG)
 
     file_handler = logging.FileHandler(_LOG_FILE, encoding="utf-8")
     file_handler.setLevel(logging.DEBUG)
     fmt = logging.Formatter("%(asctime)s [%(levelname)s] %(name)s: %(message)s")
     file_handler.setFormatter(fmt)
-    logger.addHandler(file_handler)
+    root_logger.addHandler(file_handler)
 
     console_handler = logging.StreamHandler()
     console_handler.setLevel(console_level)
     console_handler.setFormatter(fmt)
-    logger.addHandler(console_handler)
+    root_logger.addHandler(console_handler)
+
+    for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+        logging.getLogger(name).handlers.clear()
+        logging.getLogger(name).propagate = True
 
     logging.captureWarnings(True)
     return _LOG_FILE

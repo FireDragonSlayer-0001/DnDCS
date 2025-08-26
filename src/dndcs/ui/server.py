@@ -27,6 +27,33 @@ def _safe_join(base: Path, rel: str) -> Path:
 def create_app() -> FastAPI:
     app = FastAPI(title="DnDCS UI", version="0.2.0")
 
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        start = time.time()
+        try:
+            response = await call_next(request)
+        except HTTPException as exc:
+            log.error(
+                "%s %s -> %d: %s",
+                request.method,
+                request.url.path,
+                exc.status_code,
+                exc.detail,
+            )
+            raise
+        except Exception:
+            log.exception("%s %s -> 500", request.method, request.url.path)
+            raise
+        duration = (time.time() - start) * 1000
+        log.info(
+            "%s %s -> %d (%.1fms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration,
+        )
+        return response
+
     @app.get("/api/ping")
     def ping():
         return {"ok": True}
