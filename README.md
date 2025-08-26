@@ -9,17 +9,17 @@ Modular backend for Dungeons & Dragons character sheets with an integrated web U
 ## Installation
 Requires **Python 3.10+**. Clone the repository and install with the included script:
 
-```bash
+```cmd
 git clone https://github.com/FireDragonSlayer-0001/DnDCS
 cd DnDCS
-./install.sh
+install.bat
 ```
 
 ## Usage
 Start the web interface:
 
-```bash
-./run.sh
+```cmd
+run.bat
 ```
 
 The server listens on `http://127.0.0.1:8000` by default and opens in your browser. Use `--host`, `--port` and `--no-open` to control the startup behaviour.
