@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 import uvicorn
 
-from dndcs.core import models, registry
+from dndcs.core import models, registry, discovery, loader
 
 log = logging.getLogger("dndcs.ui")
 logging.basicConfig(level=logging.INFO)
@@ -38,7 +38,7 @@ def create_app() -> FastAPI:
     @app.get("/api/modules")
     def api_modules():
         mods = []
-        for man in registry.discover_modules():
+        for man in discovery.discover_modules():
             entry = {
                 "id": man.get("id"),
                 "name": man.get("name"),
@@ -53,7 +53,7 @@ def create_app() -> FastAPI:
 
     @app.get("/mods/{module_id}/assets/{path:path}")
     def serve_asset(module_id: str, path: str):
-        for man in registry.discover_modules():
+        for man in discovery.discover_modules():
             if man.get("id") == module_id:
                 base = Path(man["__manifest_dir__"]) / "assets"
                 if not base.exists():
@@ -71,10 +71,10 @@ def create_app() -> FastAPI:
 
         log.info(
             "new_character: requested=%s; discovered=%s",
-            module_id, [m.get("id") for m in registry.discover_modules()]
+            module_id, [m.get("id") for m in discovery.discover_modules()]
         )
 
-        mod = registry.load_module_by_manifest_id(module_id)
+        mod = loader.load_module_by_manifest_id(module_id)
         if mod is None:
             raise HTTPException(status_code=404, detail=f"Module '{module_id}' not found")
 
@@ -102,10 +102,10 @@ def create_app() -> FastAPI:
 
         log.info(
             "derive: requested module=%s; discovered=%s",
-            char.module, [m.get("id") for m in registry.discover_modules()]
+            char.module, [m.get("id") for m in discovery.discover_modules()]
         )
 
-        mod = registry.load_module_by_manifest_id(char.module)
+        mod = loader.load_module_by_manifest_id(char.module)
         if mod is None:
             raise HTTPException(status_code=404, detail=f"Module '{char.module}' not found")
 
@@ -121,7 +121,7 @@ def create_app() -> FastAPI:
         except Exception as e:
             raise HTTPException(status_code=400, detail=f"Invalid character: {e}")
 
-        mod = registry.load_module_by_manifest_id(char.module)
+        mod = loader.load_module_by_manifest_id(char.module)
         if mod is None:
             raise HTTPException(status_code=404, detail=f"Module '{char.module}' not found")
 
