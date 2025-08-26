@@ -98,6 +98,8 @@
     if (found) {
       found.props = found.props || {};
       found.props.spellbook = found.props.spellbook || { known:{}, prepared:{} };
+      found.props.spellbook.known = found.props.spellbook.known || {};
+      found.props.spellbook.prepared = found.props.spellbook.prepared || {};
       found.props.spellbook.known.cantrips = found.props.spellbook.known.cantrips || [];
       return found.props.spellbook;
     }
