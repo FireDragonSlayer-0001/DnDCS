@@ -1,10 +1,14 @@
 import json
 import click
 
+from dndcs.logger import init_logging
+
 @click.group()
 def main():
     """DnDCS CLI."""
-    pass
+    # Configure logging so each run produces a log file and warnings/errors
+    # are echoed to the terminal for easier debugging.
+    init_logging()
 
 @main.command("ui")
 @click.option("--host", default="127.0.0.1", show_default=True)

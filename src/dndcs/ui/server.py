@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-import os, threading, time, webbrowser, logging
+import os, threading, time, webbrowser
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -8,9 +8,9 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from dndcs.core import models, registry, discovery, loader
+from dndcs.logger import get_logger, init_logging
 
-log = logging.getLogger("dndcs.ui")
-logging.basicConfig(level=logging.INFO)
+log = get_logger("ui")
 
 
 def _static_dir() -> Path:
@@ -141,6 +141,8 @@ def create_app() -> FastAPI:
 
 
 def serve(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True) -> None:
+    # Ensure logging is configured for UI runs.
+    init_logging()
     app = create_app()
     if open_browser:
         def _open():
