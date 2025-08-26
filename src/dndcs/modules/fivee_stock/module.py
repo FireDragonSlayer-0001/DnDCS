@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Any, List, Optional
+from pathlib import Path
 from math import floor
 from dndcs.core import models
 from dndcs.core.module_base import ModuleBase
@@ -336,7 +337,17 @@ class FiveEStockModule(ModuleBase):
         # Automatically pull in any subsystem folders declared in the manifest
         # (items, feats, spells, etc.) so the module can extend itself without
         # being a monolithic single file.
+        if "__manifest_dir__" not in manifest:
+            manifest["__manifest_dir__"] = Path(__file__).resolve().parent
+        manifest.setdefault("subsystems", ["feats"])
         super().__init__(manifest)
+        # build quick lookup tables for feats
+        self.feats: Dict[str, Dict[str, Any]] = {}
+        for mod in self.subsystems.get("feats", []):
+            for ft in getattr(mod, "FEATS", []) or []:
+                name = str(ft.get("name", "")).lower()
+                if name:
+                    self.feats[name] = ft
 
     def id(self) -> str:
         return self.manifest.get("id", "fivee_stock")
@@ -356,10 +367,47 @@ class FiveEStockModule(ModuleBase):
         for k in ABILS:
             if k not in char.abilities:
                 issues.append(f"Missing ability: {k}")
+        # feat prerequisites
+        for ft in getattr(char, "feats", []) or []:
+            data = self.feats.get(str(ft.name).lower())
+            if not data:
+                continue
+            prereq = data.get("prerequisites", {}) or {}
+            abil_req = prereq.get("ability_scores", {}) or {}
+            for abil, req in abil_req.items():
+                score = getattr(char.abilities.get(abil), "score", 0)
+                if int(score) < int(req):
+                    issues.append(f"Feat {ft.name} requires {abil} {req}")
+            abil_any = prereq.get("ability_scores_any", {}) or {}
+            if abil_any:
+                ok = False
+                for abil, req in abil_any.items():
+                    score = getattr(char.abilities.get(abil), "score", 0)
+                    if int(score) >= int(req):
+                        ok = True
+                        break
+                if not ok:
+                    choices = ", ".join(f"{a} {r}" for a, r in abil_any.items())
+                    issues.append(f"Feat {ft.name} requires one of: {choices}")
         return issues
 
     def derive(self, char: models.Character):
         scores = _get_scores(char)
+        # apply feat modifiers
+        skill_feat_profs: set[str] = set()
+        save_feat_profs: set[str] = set()
+        for ft in getattr(char, "feats", []) or []:
+            data = self.feats.get(str(ft.name).lower(), {})
+            props: Dict[str, Any] = {}
+            props.update(data.get("props", {}) or {})
+            props.update(getattr(ft, "props", {}) or {})
+            for abil, bonus in (props.get("ability_bonuses") or {}).items():
+                scores[abil] = scores.get(abil, 10) + int(bonus)
+            for sk in props.get("skill_proficiencies", []) or []:
+                skill_feat_profs.add(sk)
+            for st in props.get("saving_throw_proficiencies", []) or []:
+                save_feat_profs.add(st)
+
         amods = _mods(scores)
         pb = proficiency_bonus(int(char.level))
         class_info = _class_block(char, amods)
@@ -368,14 +416,25 @@ class FiveEStockModule(ModuleBase):
         for k, v in extra.items():
             if v:
                 st_prof[k] = True
+        for st in save_feat_profs:
+            st_prof[st] = True
         saves = {k: amods.get(k,0) + (pb if st_prof.get(k, False) else 0) for k in ABILS}
         ac = _compute_ac(char, amods)
+        # skill modifiers
+        skill_names = {sk.name for sk in getattr(char, "skills", [])}
+        skill_names.update(skill_feat_profs)
+        skill_map = {sk["name"]: sk["ability"] for sk in SKILLS}
+        skills_out = {
+            name: amods.get(ability, 0) + (pb if name in skill_names else 0)
+            for name, ability in skill_map.items()
+        }
         out: Dict[str, Any] = {
             "proficiency_bonus": pb,
             "ability_mods": amods,
             "saving_throws": saves,
             "ac": ac,
             "saving_throw_proficiencies": st_prof,
+            "skills": skills_out,
         }
         if class_info:
             out.update({k: v for k, v in class_info.items() if k != "saving_throw_proficiencies"})
