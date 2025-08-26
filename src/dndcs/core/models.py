@@ -22,6 +22,16 @@ class Feat(BaseModel):
 class Proficiencies(BaseModel):
     saving_throws: Dict[str, bool] = Field(default_factory=dict)
 
+
+class Companion(BaseModel):
+    """Lightweight character-like creature that assists the main character."""
+
+    name: str
+    template: Optional[str] = None
+    abilities: Dict[str, AbilityScore] = Field(default_factory=dict)
+    bonuses: Dict[str, Any] = Field(default_factory=dict)
+    notes: Optional[str] = None
+
 class Character(BaseModel):
     model_config = ConfigDict(populate_by_name=True)
 
@@ -42,4 +52,4 @@ class Character(BaseModel):
     notes: Optional[str] = None
     proficiencies: Proficiencies = Field(default_factory=Proficiencies)
     spellcasting: Dict[str, Any] = Field(default_factory=dict)
-    companions: List['Character'] = Field(default_factory=list)
+    companions: List[Companion] = Field(default_factory=list)

@@ -339,7 +339,11 @@ class FiveEStockModule(ModuleBase):
         # being a monolithic single file.
         if "__manifest_dir__" not in manifest:
             manifest["__manifest_dir__"] = Path(__file__).resolve().parent
-        manifest.setdefault("subsystems", ["feats"])
+        # Include common subsystems by default so that the module is usable
+        # without loading the full manifest.  This keeps existing tests that
+        # instantiate the module with only an ``id`` working while still
+        # enabling companion templates.
+        manifest.setdefault("subsystems", ["feats", "companions"])
         super().__init__(manifest)
         # build quick lookup tables for feats
         self.feats: Dict[str, Dict[str, Any]] = {}
@@ -348,6 +352,12 @@ class FiveEStockModule(ModuleBase):
                 name = str(ft.get("name", "")).lower()
                 if name:
                     self.feats[name] = ft
+
+        # load companion templates if any are provided by subsystems
+        self.companions: Dict[str, Dict[str, Any]] = {}
+        for mod in self.subsystems.get("companions", []):
+            for name, data in getattr(mod, "COMPANIONS", {}).items():
+                self.companions[str(name).lower()] = data
 
     def id(self) -> str:
         return self.manifest.get("id", "fivee_stock")
@@ -467,4 +477,42 @@ class FiveEStockModule(ModuleBase):
             if any(pact_slots):
                 sc_out["pact_slots"] = {str(i+1): pact_slots[i] for i in range(9) if pact_slots[i]}
             out["spellcasting"] = sc_out
+
+        # derive stats for any companions and aggregate their bonuses
+        comp_out: List[Dict[str, Any]] = []
+        help_bonus = False
+        shared_senses: List[str] = []
+        for comp in getattr(char, "companions", []) or []:
+            key = (comp.template or comp.name).lower()
+            tpl = self.companions.get(key, {})
+            scores_c: Dict[str, int] = {}
+            for abil, val in (tpl.get("abilities") or {}).items():
+                scores_c[abil] = int(val)
+            for abil, obj in (comp.abilities or {}).items():
+                scores_c[abil] = int(getattr(obj, "score", obj))
+            cmods = _mods(scores_c)
+            cblock: Dict[str, Any] = {"name": comp.name}
+            if cmods:
+                cblock["ability_mods"] = cmods
+            for k in ("ac", "hit_points"):
+                if k in tpl:
+                    cblock[k] = tpl[k]
+            bonuses: Dict[str, Any] = {}
+            bonuses.update(tpl.get("bonuses", {}) or {})
+            bonuses.update(getattr(comp, "bonuses", {}) or {})
+            if bonuses:
+                cblock["bonuses"] = bonuses
+                if bonuses.get("help_action"):
+                    help_bonus = True
+                if bonuses.get("shared_senses"):
+                    shared_senses.extend(bonuses.get("shared_senses", []))
+            comp_out.append(cblock)
+        if comp_out:
+            out["companions"] = comp_out
+        if help_bonus or shared_senses:
+            bon = out.setdefault("bonuses", {})
+            if help_bonus:
+                bon["help_action"] = True
+            if shared_senses:
+                bon["shared_senses"] = sorted(set(shared_senses))
         return out
