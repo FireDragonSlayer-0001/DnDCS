@@ -41,6 +41,49 @@ FULL_CASTER_SLOTS: Dict[int, List[int]] = {
     19:[4,3,3,3,3,2,1,1,1], 20:[4,3,3,3,3,2,2,1,1],
 }
 
+# Half-caster spell slots (Paladin/Ranger)
+HALF_CASTER_SLOTS: Dict[int, List[int]] = {1: [0]*9}
+for _lvl in range(2, 21):
+    HALF_CASTER_SLOTS[_lvl] = FULL_CASTER_SLOTS.get((_lvl + 1)//2, [0]*9)[:]
+
+# Third-caster spell slots (Eldritch Knight/Arcane Trickster)
+PCT_CASTER_SLOTS: Dict[int, List[int]] = {1: [0]*9, 2: [0]*9}
+for _lvl in range(3, 21):
+    PCT_CASTER_SLOTS[_lvl] = FULL_CASTER_SLOTS.get((_lvl + 2)//3, [0]*9)[:]
+
+# Warlock pact magic slots
+PACT_MAGIC_SLOTS: Dict[int, List[int]] = {
+    1:[1,0,0,0,0,0,0,0,0], 2:[2,0,0,0,0,0,0,0,0],
+    3:[0,2,0,0,0,0,0,0,0], 4:[0,2,0,0,0,0,0,0,0],
+    5:[0,0,2,0,0,0,0,0,0], 6:[0,0,2,0,0,0,0,0,0],
+    7:[0,0,0,2,0,0,0,0,0], 8:[0,0,0,2,0,0,0,0,0],
+    9:[0,0,0,0,2,0,0,0,0], 10:[0,0,0,0,2,0,0,0,0],
+    11:[0,0,0,0,3,0,0,0,0], 12:[0,0,0,0,3,0,0,0,0],
+    13:[0,0,0,0,3,0,0,0,0], 14:[0,0,0,0,3,0,0,0,0],
+    15:[0,0,0,0,3,0,0,0,0], 16:[0,0,0,0,3,0,0,0,0],
+    17:[0,0,0,0,4,0,0,0,0], 18:[0,0,0,0,4,0,0,0,0],
+    19:[0,0,0,0,4,0,0,0,0], 20:[0,0,0,0,4,0,0,0,0],
+}
+
+# Spells-known progressions
+BARD_SPELLS_KNOWN = {
+    1:4, 2:5, 3:6, 4:7, 5:8, 6:9, 7:10, 8:11, 9:12,
+    10:14, 11:15, 12:15, 13:16, 14:18, 15:19, 16:19,
+    17:20, 18:22, 19:22, 20:22,
+}
+
+SORCERER_SPELLS_KNOWN = {
+    1:2, 2:3, 3:4, 4:5, 5:6, 6:7, 7:8, 8:9, 9:10,
+    10:11, 11:12, 12:12, 13:13, 14:13, 15:14, 16:14,
+    17:15, 18:15, 19:15, 20:15,
+}
+
+WARLOCK_SPELLS_KNOWN = {
+    1:2, 2:3, 3:4, 4:5, 5:6, 6:7, 7:8, 8:9, 9:10,
+    10:10, 11:11, 12:11, 13:12, 14:12, 15:13, 16:13,
+    17:14, 18:14, 19:15, 20:15,
+}
+
 def ability_mod(score: int) -> int:
     return floor((score - 10) / 2)
 
@@ -87,7 +130,7 @@ def _compute_ac(char: models.Character, mods: Dict[str,int]) -> Dict[str, Any]:
                 best, source = ac, "mage_armor"
     return {"value": best + shield, "breakdown": {"base": best, "shield": shield}, "source": source}
 
-def _wizard_block(char: models.Character, mods: Dict[str,int]) -> Optional[Dict[str, Any]]:
+def _wizard_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Optional[Dict[str, Any]]:
     # enable if Spellbook item exists (name "Spellbook" or props.spellbook)
     sb = None
     for it in (char.items or []):
@@ -99,8 +142,6 @@ def _wizard_block(char: models.Character, mods: Dict[str,int]) -> Optional[Dict[
     if sb is None:
         return None
 
-    level = int(char.level)
-    pb = proficiency_bonus(level)
     int_mod = mods.get("INT", 0)
     slots = FULL_CASTER_SLOTS.get(level, [0]*9)
     prepared_cap = max(1, level + int_mod)
@@ -120,8 +161,132 @@ def _wizard_block(char: models.Character, mods: Dict[str,int]) -> Optional[Dict[
         "spell_attack_mod": pb + int_mod,
         "prepared_max": prepared_cap,
         "prepared_spells": prepared,
-        "slots": {str(i+1): slots[i] for i in range(9)},
+        "slots": slots,
     }
+
+
+def _cleric_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Dict[str, Any]:
+    wis_mod = mods.get("WIS", 0)
+    slots = FULL_CASTER_SLOTS.get(level, [0]*9)
+    cap = max(1, level + wis_mod)
+    prepared = (char.spellcasting.get("cleric", {}).get("prepared", []) if isinstance(char.spellcasting, dict) else [])[:cap]
+    return {
+        "class": "cleric",
+        "spellcasting_ability": "WIS",
+        "spell_save_dc": 8 + pb + wis_mod,
+        "spell_attack_mod": pb + wis_mod,
+        "prepared_max": cap,
+        "prepared_spells": prepared,
+        "slots": slots,
+    }
+
+
+def _druid_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Dict[str, Any]:
+    wis_mod = mods.get("WIS", 0)
+    slots = FULL_CASTER_SLOTS.get(level, [0]*9)
+    cap = max(1, level + wis_mod)
+    prepared = (char.spellcasting.get("druid", {}).get("prepared", []) if isinstance(char.spellcasting, dict) else [])[:cap]
+    return {
+        "class": "druid",
+        "spellcasting_ability": "WIS",
+        "spell_save_dc": 8 + pb + wis_mod,
+        "spell_attack_mod": pb + wis_mod,
+        "prepared_max": cap,
+        "prepared_spells": prepared,
+        "slots": slots,
+    }
+
+
+def _bard_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Dict[str, Any]:
+    cha_mod = mods.get("CHA", 0)
+    slots = FULL_CASTER_SLOTS.get(level, [0]*9)
+    max_known = BARD_SPELLS_KNOWN.get(level, 0)
+    known = (char.spellcasting.get("bard", {}).get("known", []) if isinstance(char.spellcasting, dict) else [])[:max_known]
+    return {
+        "class": "bard",
+        "spellcasting_ability": "CHA",
+        "spell_save_dc": 8 + pb + cha_mod,
+        "spell_attack_mod": pb + cha_mod,
+        "known_max": max_known,
+        "known_spells": known,
+        "slots": slots,
+    }
+
+
+def _sorcerer_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Dict[str, Any]:
+    cha_mod = mods.get("CHA", 0)
+    slots = FULL_CASTER_SLOTS.get(level, [0]*9)
+    max_known = SORCERER_SPELLS_KNOWN.get(level, 0)
+    known = (char.spellcasting.get("sorcerer", {}).get("known", []) if isinstance(char.spellcasting, dict) else [])[:max_known]
+    return {
+        "class": "sorcerer",
+        "spellcasting_ability": "CHA",
+        "spell_save_dc": 8 + pb + cha_mod,
+        "spell_attack_mod": pb + cha_mod,
+        "known_max": max_known,
+        "known_spells": known,
+        "slots": slots,
+    }
+
+
+def _paladin_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Dict[str, Any]:
+    cha_mod = mods.get("CHA", 0)
+    slots = HALF_CASTER_SLOTS.get(level, [0]*9)
+    cap = max(1, (level // 2) + cha_mod)
+    prepared = (char.spellcasting.get("paladin", {}).get("prepared", []) if isinstance(char.spellcasting, dict) else [])[:cap]
+    return {
+        "class": "paladin",
+        "spellcasting_ability": "CHA",
+        "spell_save_dc": 8 + pb + cha_mod,
+        "spell_attack_mod": pb + cha_mod,
+        "prepared_max": cap,
+        "prepared_spells": prepared,
+        "slots": slots,
+    }
+
+
+def _ranger_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Dict[str, Any]:
+    wis_mod = mods.get("WIS", 0)
+    slots = HALF_CASTER_SLOTS.get(level, [0]*9)
+    cap = max(1, (level // 2) + wis_mod)
+    prepared = (char.spellcasting.get("ranger", {}).get("prepared", []) if isinstance(char.spellcasting, dict) else [])[:cap]
+    return {
+        "class": "ranger",
+        "spellcasting_ability": "WIS",
+        "spell_save_dc": 8 + pb + wis_mod,
+        "spell_attack_mod": pb + wis_mod,
+        "prepared_max": cap,
+        "prepared_spells": prepared,
+        "slots": slots,
+    }
+
+
+def _warlock_block(char: models.Character, mods: Dict[str,int], level: int, pb: int) -> Dict[str, Any]:
+    cha_mod = mods.get("CHA", 0)
+    slots = PACT_MAGIC_SLOTS.get(level, [0]*9)
+    max_known = WARLOCK_SPELLS_KNOWN.get(level, 0)
+    known = (char.spellcasting.get("warlock", {}).get("known", []) if isinstance(char.spellcasting, dict) else [])[:max_known]
+    return {
+        "class": "warlock",
+        "spellcasting_ability": "CHA",
+        "spell_save_dc": 8 + pb + cha_mod,
+        "spell_attack_mod": pb + cha_mod,
+        "known_max": max_known,
+        "known_spells": known,
+        "slots": slots,
+    }
+
+
+SPELL_BLOCKS = {
+    "bard": _bard_block,
+    "cleric": _cleric_block,
+    "druid": _druid_block,
+    "paladin": _paladin_block,
+    "ranger": _ranger_block,
+    "sorcerer": _sorcerer_block,
+    "warlock": _warlock_block,
+    "wizard": _wizard_block,
+}
 
 
 def _class_block(char: models.Character, mods: Dict[str, int]) -> Optional[Dict[str, Any]]:
@@ -195,7 +360,33 @@ class FiveEStockModule(ModuleBase):
         }
         if class_info:
             out.update({k: v for k, v in class_info.items() if k != "saving_throw_proficiencies"})
-        wiz = _wizard_block(char, amods)
-        if wiz:
-            out["spellcasting"] = wiz
+        sc_data = getattr(char, "spellcasting", {}) or {}
+        class_levels = sc_data.get("classes", {}) if isinstance(sc_data, dict) else {}
+        if not class_levels and char.class_:
+            class_levels = {str(char.class_).lower(): int(char.level)}
+
+        blocks: List[Dict[str, Any]] = []
+        slots = [0]*9
+        pact_slots = [0]*9
+        for cls, lvl in class_levels.items():
+            fn = SPELL_BLOCKS.get(str(cls).lower())
+            if not fn:
+                continue
+            block = fn(char, amods, int(lvl), pb)
+            sl = block.pop("slots", [0]*9)
+            if str(cls).lower() == "warlock":
+                pact_slots = [max(pact_slots[i], sl[i]) for i in range(9)]
+            else:
+                for i in range(9):
+                    slots[i] += sl[i]
+            blocks.append(block)
+
+        if blocks:
+            sc_out: Dict[str, Any] = {
+                "classes": blocks,
+                "slots": {str(i+1): slots[i] for i in range(9)},
+            }
+            if any(pact_slots):
+                sc_out["pact_slots"] = {str(i+1): pact_slots[i] for i in range(9) if pact_slots[i]}
+            out["spellcasting"] = sc_out
         return out
