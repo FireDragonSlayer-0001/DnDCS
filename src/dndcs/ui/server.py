@@ -79,10 +79,23 @@ def create_app() -> FastAPI:
         return {"modules": mods}
 
     @app.get("/api/spells")
-    def api_spells(name: str | None = None, cls: str | None = None):
-        from dndcs.modules.fivee_stock.spells.example import search as spell_search
-
-        spells = spell_search(name=name, cls=cls)
+    def api_spells(
+        module: str | None = None,
+        name: str | None = None,
+        cls: str | None = None,
+    ):
+        module_id = module or registry.default_module_id()
+        mod = loader.load_module_by_manifest_id(module_id)
+        if mod is None:
+            raise HTTPException(status_code=404, detail=f"Module '{module_id}' not found")
+        search_fn = None
+        for sm in mod.subsystems.get("spells", []):
+            if hasattr(sm, "search"):
+                search_fn = getattr(sm, "search")
+                break
+        if search_fn is None:
+            raise HTTPException(status_code=404, detail="No spell search available")
+        spells = search_fn(name=name, cls=cls)
         return {"spells": spells}
 
     @app.post("/api/log")
