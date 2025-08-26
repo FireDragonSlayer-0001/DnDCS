@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-import os, threading, time, webbrowser, logging
+import os, threading, time, webbrowser
 from typing import Dict, Any
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
@@ -8,9 +8,9 @@ from fastapi.staticfiles import StaticFiles
 import uvicorn
 
 from dndcs.core import models, registry, discovery, loader
+from dndcs.logger import get_logger, init_logging
 
-log = logging.getLogger("dndcs.ui")
-logging.basicConfig(level=logging.INFO)
+log = get_logger("ui")
 
 
 def _static_dir() -> Path:
@@ -26,6 +26,33 @@ def _safe_join(base: Path, rel: str) -> Path:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="DnDCS UI", version="0.2.0")
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        start = time.time()
+        try:
+            response = await call_next(request)
+        except HTTPException as exc:
+            log.error(
+                "%s %s -> %d: %s",
+                request.method,
+                request.url.path,
+                exc.status_code,
+                exc.detail,
+            )
+            raise
+        except Exception:
+            log.exception("%s %s -> 500", request.method, request.url.path)
+            raise
+        duration = (time.time() - start) * 1000
+        log.info(
+            "%s %s -> %d (%.1fms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration,
+        )
+        return response
 
     @app.get("/api/ping")
     def ping():
@@ -141,6 +168,8 @@ def create_app() -> FastAPI:
 
 
 def serve(host: str = "127.0.0.1", port: int = 8000, open_browser: bool = True) -> None:
+    # Ensure logging is configured for UI runs.
+    init_logging()
     app = create_app()
     if open_browser:
         def _open():
