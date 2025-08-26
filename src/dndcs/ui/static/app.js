@@ -77,7 +77,10 @@
     return getJSON("/api/validate", { method: "POST", body: JSON.stringify(char) });
   }
   async function apiSpells(params={}) {
-    const q = new URLSearchParams(params);
+    const q = new URLSearchParams();
+    Object.entries(params).forEach(([k,v]) => {
+      if (v !== undefined && v !== null && v !== "") q.append(k, v);
+    });
     return getJSON(`/api/spells?${q.toString()}`);
   }
 
@@ -304,7 +307,7 @@
       if (!term) return;
       try {
         const cls = derived?.spellcasting?.class;
-        const res = await apiSpells({ name: term, class: cls });
+        const res = await apiSpells({ module: current?.module, name: term, cls });
         const dl = $("#spellSuggestions");
         dl.innerHTML = "";
         res.spells.slice(0, 20).forEach(sp => dl.append(el("option", { value: sp.name })));
