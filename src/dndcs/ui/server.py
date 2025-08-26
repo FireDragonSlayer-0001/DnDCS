@@ -90,7 +90,7 @@ def create_app() -> FastAPI:
             items=[],
             feats=[],
         )
-        return JSONResponse(char.model_dump())
+        return JSONResponse(char.model_dump(by_alias=True, exclude_none=True))
 
     @app.post("/api/derive")
     async def api_derive(req: Request):
