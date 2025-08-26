@@ -23,6 +23,8 @@ class ModuleBase:
                 continue
             loaded: List[ModuleType] = []
             for py in sect_dir.glob("*.py"):
+                if py.name == "__init__.py":
+                    continue
                 spec = importlib.util.spec_from_file_location(
                     f"dndcs_mod_{manifest.get('id','mod')}_{sect}_{py.stem}", py
                 )
