@@ -1,0 +1,38 @@
+{
+  "name": "Test Wizard",
+  "level": 17,
+  "module": "fivee_stock",
+  "class": "wizard",
+  "race": "Tiefling",
+  "abilities": {
+    "STR": {"name": "STR", "score": 8},
+    "DEX": {"name": "DEX", "score": 14},
+    "CON": {"name": "CON", "score": 14},
+    "INT": {"name": "INT", "score": 20},
+    "WIS": {"name": "WIS", "score": 16},
+    "CHA": {"name": "CHA", "score": 10}
+  },
+  "items": [
+    {
+      "name": "Spellbook",
+      "props": {
+        "spellbook": {
+          "prepared": {
+            "1": ["mage armor", "magic missile", "shield"],
+            "2": ["mirror image", "misty step"],
+            "3": ["counterspell", "fireball", "fly"],
+            "4": ["dimension door", "ice storm"],
+            "5": ["wall of force", "teleportation circle"],
+            "6": ["globe of invulnerability"],
+            "7": ["plane shift"],
+            "8": ["maze", "mind blank"],
+            "9": ["wish"]
+          }
+        }
+      }
+    },
+    {"name": "Quarterstaff"},
+    {"name": "Robe of the Archmagi", "props": {"ac_base": 15}}
+  ],
+  "notes": "Level 17 test wizard with assorted spells and items"
+}

@@ -4,7 +4,7 @@ from pathlib import Path
 from math import floor
 from dndcs.core import models
 from dndcs.core.module_base import ModuleBase
-from .classes import CLASSES
+from dndcs.modules.fivee_stock.classes import CLASSES
 
 ABILS = ("STR","DEX","CON","INT","WIS","CHA")
 SKILLS = [
