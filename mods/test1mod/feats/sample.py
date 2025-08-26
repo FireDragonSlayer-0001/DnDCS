@@ -1,1 +1,0 @@
-FEATS = [{"name": "Test Feat"}]
