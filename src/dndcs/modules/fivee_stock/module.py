@@ -101,6 +101,25 @@ def _get_scores(char: models.Character) -> Dict[str, int]:
 def _mods(scores: Dict[str,int]) -> Dict[str,int]:
     return {k: ability_mod(v) for k,v in scores.items()}
 
+def weapon_ability(weapon: Dict[str, Any], mods: Dict[str, int]) -> str:
+    """Determine which ability modifier applies to a weapon."""
+    props = weapon.get("properties", []) if isinstance(weapon, dict) else []
+    if weapon.get("type") == "ranged":
+        return "DEX"
+    if "finesse" in props:
+        return "DEX" if mods.get("DEX", 0) >= mods.get("STR", 0) else "STR"
+    return "STR"
+
+def weapon_attack_bonus(weapon: Dict[str, Any], mods: Dict[str, int], pb: int, proficient: bool = True) -> int:
+    """Calculate total attack modifier for a weapon."""
+    ability = weapon_ability(weapon, mods)
+    return mods.get(ability, 0) + (pb if proficient else 0)
+
+def weapon_damage_bonus(weapon: Dict[str, Any], mods: Dict[str, int]) -> int:
+    """Calculate damage modifier for a weapon."""
+    ability = weapon_ability(weapon, mods)
+    return mods.get(ability, 0)
+
 def _compute_ac(char: models.Character, mods: Dict[str,int]) -> Dict[str, Any]:
     dex = mods.get("DEX", 0)
     best = 10 + dex
