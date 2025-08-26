@@ -27,15 +27,35 @@
     setTimeout(() => d.close(), ms);
   };
 
+  async function logError(err, context="") {
+    const message = err?.message || String(err);
+    const payload = {
+      level: "error",
+      message: context ? `${context}: ${message}` : message,
+      stack: err?.stack,
+    };
+    try {
+      await fetch("/api/log", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+    } catch (_) {}
+  }
+
   // Global error handlers – show a toast but allow UI to remain usable
   window.addEventListener("error", (e) => {
-    console.error(e.error || e.message);
-    toast("Error: " + (e.error?.message || e.message));
+    const err = e.error || new Error(e.message);
+    console.error(err);
+    toast("Error: " + err.message);
+    logError(err, "window.error");
   });
 
   window.addEventListener("unhandledrejection", (e) => {
-    console.error(e.reason);
-    toast("Error: " + (e.reason?.message || e.reason));
+    const err = e.reason instanceof Error ? e.reason : new Error(e.reason);
+    console.error(err);
+    toast("Error: " + err.message);
+    logError(err, "unhandledrejection");
     e.preventDefault();
   });
 
@@ -216,7 +236,7 @@
         el("td", {}, el("input", { type:"number", min:"1", value: it.quantity ?? 1, oninput: (e)=>{ it.quantity = parseInt(e.target.value||"1",10)||1; } })),
         el("td", {}, el("input", { value: JSON.stringify(it.props || {}), onchange: async (e)=>{
           try { it.props = JSON.parse(e.target.value || "{}"); }
-          catch { toast("Invalid props JSON"); }
+          catch (e) { toast("Invalid props JSON"); logError(e, "item props parse"); }
           await runDerive(); // AC etc. may change
         }})),
         el("td", {}, remove),
@@ -228,7 +248,7 @@
       const qty = parseInt($("#itemQty").value||"1",10) || 1;
       let props = {};
       if ($("#itemProps").value.trim()) {
-        try { props = JSON.parse($("#itemProps").value); } catch { return toast("Invalid props JSON"); }
+        try { props = JSON.parse($("#itemProps").value); } catch (e) { logError(e, "item props parse"); return toast("Invalid props JSON"); }
       }
       current.items.push({ name, quantity: qty, props });
       $("#itemName").value = ""; $("#itemQty").value = 1; $("#itemProps").value = "";
@@ -290,6 +310,7 @@
         res.spells.slice(0, 20).forEach(sp => dl.append(el("option", { value: sp.name })));
       } catch (e) {
         console.error(e);
+        logError(e, "spell suggestions");
       }
     };
 
@@ -400,6 +421,7 @@
       derived = null;
       updateSummary();
       toast("Derive failed: " + e.message);
+      logError(e, "derive");
     }
   }
 
@@ -410,6 +432,7 @@
       return res.issues || [];
     } catch (e) {
       toast("Validate failed: " + e.message);
+      logError(e, "validate");
       return ["Validation error"];
     }
   }
@@ -450,7 +473,7 @@ localStorage.setItem("dndcs.moduleId", chosen);
 sel.onchange = () => localStorage.setItem("dndcs.moduleId", sel.value);
 
     } catch (e) {
-      toast("Failed to load modules"); console.error(e);
+      toast("Failed to load modules"); console.error(e); logError(e, "load modules");
     }
 
     // buttons
@@ -465,6 +488,7 @@ sel.onchange = () => localStorage.setItem("dndcs.moduleId", sel.value);
         switchTab("overview");
       } catch (e) {
         toast("New character failed: " + e.message);
+        logError(e, "new character");
       }
     };
 
@@ -479,6 +503,7 @@ sel.onchange = () => localStorage.setItem("dndcs.moduleId", sel.value);
         switchTab("overview");
       } catch (err) {
         toast("Open failed: " + err.message);
+        logError(err, "open file");
       }
     });
 

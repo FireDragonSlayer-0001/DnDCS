@@ -85,6 +85,19 @@ def create_app() -> FastAPI:
         spells = spell_search(name=name, cls=cls)
         return {"spells": spells}
 
+    @app.post("/api/log")
+    async def api_log(req: Request):
+        data = await req.json()
+        level = (data.get("level") or "info").lower()
+        message = data.get("message") or ""
+        stack = data.get("stack")
+        log_fn = getattr(log, level if level in {"debug", "info", "warning", "error", "critical"} else "info")
+        if stack:
+            log_fn("UI: %s\n%s", message, stack)
+        else:
+            log_fn("UI: %s", message)
+        return {"ok": True}
+
     @app.get("/mods/{module_id}/assets/{path:path}")
     def serve_asset(module_id: str, path: str):
         for man in discovery.discover_modules():
