@@ -12,6 +12,4 @@ dist/
 # Local-only
 mods/*
 !mods/.gitkeep
-!mods/test1mod/
-!mods/test1mod/**
 characters/*.json
