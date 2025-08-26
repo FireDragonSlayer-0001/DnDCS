@@ -23,3 +23,26 @@ def test_familiar_help_and_senses():
     assert "darkvision" in out["bonuses"]["shared_senses"]
     comp = out["companions"][0]
     assert comp["ability_mods"]["DEX"] == 2
+
+
+def test_wolf_companion_override():
+    mod = FiveEStockModule({"id": "fivee_stock"})
+    wolf = models.Companion(
+        name="Wolf",
+        template="wolf",
+        abilities={"STR": models.AbilityScore(name="STR", score=14)},
+        bonuses={"shared_senses": ["smell"]},
+    )
+    char = models.Character(
+        name="Ranger",
+        level=3,
+        module="fivee_stock",
+        abilities=_abilities(),
+        companions=[wolf],
+    )
+    out = mod.derive(char)
+    bonuses = out["bonuses"]
+    assert bonuses["help_action"] is True
+    assert "smell" in bonuses["shared_senses"]
+    comp = out["companions"][0]
+    assert comp["ability_mods"]["STR"] == 2
