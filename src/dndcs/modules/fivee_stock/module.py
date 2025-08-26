@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional
 from math import floor
 from dndcs.core import models
 from dndcs.core.module_base import ModuleBase
+from .classes import CLASSES
 
 ABILS = ("STR","DEX","CON","INT","WIS","CHA")
 SKILLS = [
@@ -50,7 +51,8 @@ def _get_scores(char: models.Character) -> Dict[str, int]:
     out: Dict[str, int] = {}
     for k in ABILS:
         a = char.abilities.get(k)
-        if a: out[k] = int(a.score)
+        if a:
+            out[k] = int(a.score)
     return out
 
 def _mods(scores: Dict[str,int]) -> Dict[str,int]:
@@ -121,6 +123,30 @@ def _wizard_block(char: models.Character, mods: Dict[str,int]) -> Optional[Dict[
         "slots": {str(i+1): slots[i] for i in range(9)},
     }
 
+
+def _class_block(char: models.Character, mods: Dict[str, int]) -> Optional[Dict[str, Any]]:
+    cls = (char.class_ or "").lower()
+    data = CLASSES.get(cls)
+    if not data:
+        return None
+    level = int(char.level)
+    con_mod = mods.get("CON", 0)
+    hd = int(data.get("hit_die", 0))
+    avg = (hd // 2) + 1
+    hp = hd + con_mod
+    if level > 1:
+        hp += (level - 1) * (avg + con_mod)
+    features: List[str] = []
+    for L in range(1, level + 1):
+        features.extend(data.get("features", {}).get(L, []))
+    st_prof = {a: (a in data.get("saving_throws", [])) for a in ABILS}
+    return {
+        "hit_points": hp,
+        "hit_dice": f"{level}d{hd}",
+        "class_features": features,
+        "saving_throw_proficiencies": st_prof,
+    }
+
 class FiveEStockModule(ModuleBase):
     def __init__(self, manifest: Dict[str, Any]):
         # Automatically pull in any subsystem folders declared in the manifest
@@ -152,7 +178,12 @@ class FiveEStockModule(ModuleBase):
         scores = _get_scores(char)
         amods = _mods(scores)
         pb = proficiency_bonus(int(char.level))
-        st_prof = getattr(getattr(char, "proficiencies", None), "saving_throws", {}) or {}
+        class_info = _class_block(char, amods)
+        st_prof = class_info.get("saving_throw_proficiencies", {}) if class_info else {}
+        extra = getattr(getattr(char, "proficiencies", None), "saving_throws", {}) or {}
+        for k, v in extra.items():
+            if v:
+                st_prof[k] = True
         saves = {k: amods.get(k,0) + (pb if st_prof.get(k, False) else 0) for k in ABILS}
         ac = _compute_ac(char, amods)
         out: Dict[str, Any] = {
@@ -160,7 +191,11 @@ class FiveEStockModule(ModuleBase):
             "ability_mods": amods,
             "saving_throws": saves,
             "ac": ac,
+            "saving_throw_proficiencies": st_prof,
         }
+        if class_info:
+            out.update({k: v for k, v in class_info.items() if k != "saving_throw_proficiencies"})
         wiz = _wizard_block(char, amods)
-        if wiz: out["spellcasting"] = wiz
+        if wiz:
+            out["spellcasting"] = wiz
         return out

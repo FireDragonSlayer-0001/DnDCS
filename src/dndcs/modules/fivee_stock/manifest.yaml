@@ -7,3 +7,4 @@ subsystems:
   - items
   - feats
   - spells
+  - classes
