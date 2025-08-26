@@ -8,3 +8,4 @@ subsystems:
   - feats
   - spells
   - classes
+  - companions
