@@ -27,6 +27,18 @@
     setTimeout(() => d.close(), ms);
   };
 
+  // Global error handlers – show a toast but allow UI to remain usable
+  window.addEventListener("error", (e) => {
+    console.error(e.error || e.message);
+    toast("Error: " + (e.error?.message || e.message));
+  });
+
+  window.addEventListener("unhandledrejection", (e) => {
+    console.error(e.reason);
+    toast("Error: " + (e.reason?.message || e.reason));
+    e.preventDefault();
+  });
+
   // ---------- api ----------
   async function getJSON(url, opts={}) {
     const r = await fetch(url, { ...opts, headers: { "Content-Type": "application/json", ...(opts.headers||{}) }});
