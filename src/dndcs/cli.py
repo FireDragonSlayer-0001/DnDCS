@@ -63,3 +63,7 @@ def search_spells(name: str | None, cls: str | None):
     results = search(name=name, cls=cls)
     for sp in sorted(results, key=lambda s: (s["level"], s["name"])):
         click.echo(f"{sp['name']} (Level {sp['level']} {sp['school']})")
+
+
+if __name__ == "__main__":
+    main()
