@@ -51,6 +51,13 @@ def create_app() -> FastAPI:
             mods.append(entry)
         return {"modules": mods}
 
+    @app.get("/api/spells")
+    def api_spells(name: str | None = None, cls: str | None = None):
+        from dndcs.modules.fivee_stock.spells.example import search as spell_search
+
+        spells = spell_search(name=name, cls=cls)
+        return {"spells": spells}
+
     @app.get("/mods/{module_id}/assets/{path:path}")
     def serve_asset(module_id: str, path: str):
         for man in discovery.discover_modules():

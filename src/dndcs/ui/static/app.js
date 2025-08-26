@@ -44,6 +44,10 @@
   async function apiValidate(char) {
     return getJSON("/api/validate", { method: "POST", body: JSON.stringify(char) });
   }
+  async function apiSpells(params={}) {
+    const q = new URLSearchParams(params);
+    return getJSON(`/api/spells?${q.toString()}`);
+  }
 
   // ---------- utilities ----------
   function slug(s){ return (s||"character").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,""); }
@@ -260,6 +264,22 @@
     const sb = ensureSpellbook();
     const wrap = $("#spellLists");
     wrap.innerHTML = "";
+
+    // update suggestions as user types spell names
+    const nameInput = $("#spellName");
+    nameInput.oninput = async () => {
+      const term = nameInput.value.trim();
+      if (!term) return;
+      try {
+        const cls = derived?.spellcasting?.class;
+        const res = await apiSpells({ name: term, class: cls });
+        const dl = $("#spellSuggestions");
+        dl.innerHTML = "";
+        res.spells.slice(0, 20).forEach(sp => dl.append(el("option", { value: sp.name })));
+      } catch (e) {
+        console.error(e);
+      }
+    };
 
     // derived spellcasting summary available?
     const cap = derived?.spellcasting?.prepared_max ?? null;
