@@ -6,6 +6,15 @@ from dndcs.core import models
 from dndcs.core.module_base import ModuleBase
 from dndcs.modules.fivee_stock.classes import CLASSES
 
+# Item property fields recognised during character derivation:
+#
+# ability_bonuses: {"STR": 2, ...}
+#     Increases the base ability scores before modifiers are calculated.
+# saving_throw_proficiencies: ["CON", ...]
+#     Grants proficiency in the listed saving throws.
+# saving_throw_bonuses: {"DEX": 1, "all": 1}
+#     Adds flat bonuses to saving throws; the key "all" applies to every save.
+
 ABILS = ("STR","DEX","CON","INT","WIS","CHA")
 SKILLS = [
     {"name":"Athletics","ability":"STR"},
@@ -418,6 +427,22 @@ class FiveEStockModule(ModuleBase):
             for st in props.get("saving_throw_proficiencies", []) or []:
                 save_feat_profs.add(st)
 
+        # apply item modifiers before computing ability mods
+        save_item_profs: set[str] = set()
+        save_item_bonuses: Dict[str, int] = {}
+        for it in getattr(char, "items", []) or []:
+            props = getattr(it, "props", {}) or {}
+            for abil, bonus in (props.get("ability_bonuses") or {}).items():
+                scores[abil] = scores.get(abil, 10) + int(bonus)
+            for st in props.get("saving_throw_proficiencies", []) or []:
+                save_item_profs.add(st)
+            for key, val in (props.get("saving_throw_bonuses") or {}).items():
+                k = str(key).upper()
+                if k == "ALL":
+                    save_item_bonuses["all"] = save_item_bonuses.get("all", 0) + int(val)
+                elif k in ABILS:
+                    save_item_bonuses[k] = save_item_bonuses.get(k, 0) + int(val)
+
         amods = _mods(scores)
         pb = proficiency_bonus(int(char.level))
         class_info = _class_block(char, amods)
@@ -428,7 +453,16 @@ class FiveEStockModule(ModuleBase):
                 st_prof[k] = True
         for st in save_feat_profs:
             st_prof[st] = True
-        saves = {k: amods.get(k,0) + (pb if st_prof.get(k, False) else 0) for k in ABILS}
+        for st in save_item_profs:
+            st_prof[st] = True
+        all_bonus = save_item_bonuses.get("all", 0)
+        saves = {
+            k: amods.get(k, 0)
+            + (pb if st_prof.get(k, False) else 0)
+            + all_bonus
+            + save_item_bonuses.get(k, 0)
+            for k in ABILS
+        }
         ac = _compute_ac(char, amods)
         # skill modifiers
         skill_names = {sk.name for sk in getattr(char, "skills", [])}
@@ -446,6 +480,8 @@ class FiveEStockModule(ModuleBase):
             "saving_throw_proficiencies": st_prof,
             "skills": skills_out,
         }
+        if save_item_bonuses:
+            out["saving_throw_bonuses"] = save_item_bonuses
         if class_info:
             out.update({k: v for k, v in class_info.items() if k != "saving_throw_proficiencies"})
         sc_data = getattr(char, "spellcasting", {}) or {}
