@@ -90,21 +90,22 @@
 
   // Ensure Spellbook structure exists (for wizard flows in our SRD module)
   function ensureSpellbook() {
-    if (!current) return;
+    if (!current) return null;
     if (!Array.isArray(current.items)) current.items = [];
-    const found = current.items.find(it =>
-      (it.name||"").toLowerCase()==="spellbook" || (it.props && it.props.spellbook)
-    );
-    if (found) {
-      found.props = found.props || {};
-      found.props.spellbook = found.props.spellbook || { known:{}, prepared:{} };
-      found.props.spellbook.known = found.props.spellbook.known || {};
-      found.props.spellbook.prepared = found.props.spellbook.prepared || {};
-      found.props.spellbook.known.cantrips = found.props.spellbook.known.cantrips || [];
-      return found.props.spellbook;
+
+    // Always fetch the existing spellbook via helper
+    let sb = getSpellbook();
+    if (sb) {
+      // Ensure sub-objects exist without overwriting arrays
+      sb.known = sb.known || {};
+      sb.prepared = sb.prepared || {};
+      sb.known.cantrips = sb.known.cantrips || [];
+      return sb;
     }
-    const sb = { known:{ cantrips: [] }, prepared:{} };
-    current.items.push({ name:"Spellbook", quantity:1, props: { spellbook: sb }});
+
+    // Create a new spellbook item if none present
+    sb = { known: { cantrips: [] }, prepared: {} };
+    current.items.push({ name: "Spellbook", quantity: 1, props: { spellbook: sb } });
     return sb;
   }
 
@@ -298,7 +299,9 @@
 
   function renderSpells() {
     if (!current) return;
-    const sb = ensureSpellbook();
+    let sb = getSpellbook();
+    if (!sb) sb = ensureSpellbook();
+    if (!sb) return;
     const wrap = $("#spellLists");
     wrap.innerHTML = "";
 
@@ -421,6 +424,7 @@
     try {
       derived = await apiDerive(current);
       updateSummary();
+      renderSpells();
       renderRaw();
     } catch (e) {
       derived = null;
