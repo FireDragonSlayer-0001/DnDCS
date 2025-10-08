@@ -14,12 +14,29 @@ def _read_manifest(manifest_path: Path) -> Dict[str, Any]:
     return man
 
 
-def _internal_modules_root() -> Path:
-    return Path(__file__).resolve().parents[1] / "modules"
+def _internal_module_roots() -> List[Path]:
+    """Return built-in module search roots shipped with the repository."""
+
+    core_root = Path(__file__).resolve().parents[1]
+    candidates = [
+        core_root / "modules",  # legacy location
+        core_root.parents[0] / "rulesets" / "dndcs_rulesets",
+    ]
+    roots: List[Path] = []
+    for path in candidates:
+        if path.exists():
+            roots.append(path)
+    return roots
 
 
-def _repo_modules_root() -> Path:
-    return Path.cwd() / "modules"
+def _repo_module_roots() -> List[Path]:
+    """Return add-on roots that live inside the repository."""
+
+    candidates = [
+        Path.cwd() / "main-Addons",
+        Path.cwd() / "modules",  # legacy layout
+    ]
+    return [path for path in candidates if path.exists()]
 
 
 def _dropin_mods_root() -> Path:
@@ -46,8 +63,8 @@ def module_search_paths(extra: Optional[List[Path]] = None) -> List[Path]:
             if p:
                 paths.append(Path(p).expanduser())
     paths.append(_user_modules_root())
-    paths.append(_repo_modules_root())
-    paths.append(_internal_modules_root())
+    paths.extend(_repo_module_roots())
+    paths.extend(_internal_module_roots())
     if extra:
         paths.extend(extra)
     uniq, seen = [], set()

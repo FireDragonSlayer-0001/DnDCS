@@ -29,25 +29,34 @@ dev = [
 dndcs = "dndcs.cli:main"
 
 [tool.setuptools]
-package-dir = {"" = "src"}
 include-package-data = true
 
 [tool.setuptools.packages.find]
-where = ["src"]
-include = ["dndcs", "dndcs.*"]
+where = [".", "main-Core"]
+include = [
+  "dndcs",
+  "dndcs.*",
+  "dndcs_core",
+  "dndcs_core.*",
+  "dndcs_rulesets",
+  "dndcs_rulesets.*",
+  "webui",
+  "webui.*",
+]
 
 [tool.setuptools.package-data]
-# Keys must be real package names (e.g., "dndcs"), not globs.
-# Paths are relative to the package directory (src/dndcs).
-"dndcs" = [
-  "ui/static/**/*",
-  "modules/**/manifest.yaml",
-  "modules/**/assets/**/*"
+"dndcs_rulesets" = [
+  "fivee_stock/manifest.yaml",
+  "fivee_stock/assets/**/*",
 ]
+"webui" = ["static/**/*"]
 
 [tool.coverage.run]
 branch = true
-source = ["src"]
+source = ["dndcs", "main-Core/dndcs_core", "webui"]
 
 [tool.coverage.report]
 show_missing = true
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
