@@ -1,8 +1,18 @@
+import { apiDerive, apiModules, apiNewCharacter, apiSpells, apiValidate } from "./services/api.js";
+import {
+  getCurrent,
+  getDerived,
+  setCurrent,
+  setDerived,
+  setModules,
+  updateSummary,
+} from "./state/store.js";
+import { toast } from "./util/toast.js";
+import { logError } from "./util/logging.js";
+import { slug } from "./util/slug.js";
+
 // ---------- state ----------
 const ABILS = ["STR","DEX","CON","INT","WIS","CHA"];
-let current = null;       // character JSON
-let derived = null;       // derived payload
-let modules = [];         // discovered modules
 let booted = false;
 
 // ---------- el helpers ----------
@@ -20,29 +30,6 @@ const el = (tag, attrs={}, ...children) => {
   return n;
 };
 
-const toast = (msg, ms=1800) => {
-  const d = $("#toast");
-  d.textContent = msg;
-  d.show();
-  setTimeout(() => d.close(), ms);
-};
-
-async function logError(err, context="") {
-  const message = err?.message || String(err);
-  const payload = {
-    level: "error",
-    message: context ? `${context}: ${message}` : message,
-    stack: err?.stack,
-  };
-  try {
-    await fetch("/api/log", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-  } catch (_) {}
-}
-
 // Global error handlers – show a toast but allow UI to remain usable
 window.addEventListener("error", (e) => {
   const err = e.error || new Error(e.message);
@@ -59,39 +46,11 @@ window.addEventListener("unhandledrejection", (e) => {
   e.preventDefault();
 });
 
-// ---------- api ----------
-async function getJSON(url, opts={}) {
-  const r = await fetch(url, { ...opts, headers: { "Content-Type": "application/json", ...(opts.headers||{}) }});
-  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
-  return await r.json();
-}
-
-async function apiModules() { return getJSON("/api/modules"); }
-async function apiNewCharacter(module_id, name="New Hero") {
-  return getJSON("/api/new_character", { method: "POST", body: JSON.stringify({ module_id, name })});
-}
-async function apiDerive(char) {
-  return getJSON("/api/derive", { method: "POST", body: JSON.stringify(char) });
-}
-async function apiValidate(char) {
-  return getJSON("/api/validate", { method: "POST", body: JSON.stringify(char) });
-}
-async function apiSpells(params={}) {
-  const q = new URLSearchParams();
-  Object.entries(params).forEach(([k,v]) => {
-    if (v !== undefined && v !== null && v !== "") q.append(k, v);
-  });
-  return getJSON(`/api/spells?${q.toString()}`);
-}
-
-// ---------- utilities ----------
-function slug(s){ return (s||"character").toLowerCase().replace(/[^a-z0-9]+/g,"_").replace(/^_+|_+$/g,""); }
-function deepCopy(x){ return JSON.parse(JSON.stringify(x)); }
-
 // Ensure Spellbook structure exists (for wizard flows in our SRD module)
 function ensureSpellbook() {
-  if (!current) return null;
-  if (!Array.isArray(current.items)) current.items = [];
+  const character = getCurrent();
+  if (!character) return null;
+  if (!Array.isArray(character.items)) character.items = [];
 
   // Always fetch the existing spellbook via helper
   let sb = getSpellbook();
@@ -105,39 +64,17 @@ function ensureSpellbook() {
 
   // Create a new spellbook item if none present
   sb = { known: { cantrips: [] }, prepared: {} };
-  current.items.push({ name: "Spellbook", quantity: 1, props: { spellbook: sb } });
+  character.items.push({ name: "Spellbook", quantity: 1, props: { spellbook: sb } });
   return sb;
 }
 
 function getSpellbook() {
-  if (!current || !current.items) return null;
-  const it = current.items.find(it =>
+  const character = getCurrent();
+  if (!character || !character.items) return null;
+  const it = character.items.find(it =>
     (it.name||"").toLowerCase()==="spellbook" || (it.props && it.props.spellbook)
   );
   return it ? it.props.spellbook : null;
-}
-
-// ---------- summary bar ----------
-function updateSummary() {
-  const has = !!current;
-  $("#sName").textContent = has ? current.name || "—" : "—";
-  $("#sLevel").textContent = has ? `(Level ${current.level ?? "?"})` : "";
-  $("#sModule").textContent = has ? current.module || "—" : "—";
-  $("#sPB").textContent = derived?.proficiency_bonus ?? "—";
-  $("#sAC").textContent = derived?.ac?.value ?? "—";
-  $("#sACsrc").textContent = derived?.ac ? `(${derived.ac.source})` : "";
-
-  const sc = $("#sSpellcasting");
-  if (derived?.spellcasting) {
-    sc.classList.remove("hide");
-    $("#sDC").textContent = derived.spellcasting.spell_save_dc;
-    $("#sATK").textContent = `+${derived.spellcasting.spell_attack_mod}`;
-    const prep = derived.spellcasting.prepared_spells?.length ?? 0;
-    $("#sPrepCount").textContent = prep;
-    $("#sPrepCap").textContent = derived.spellcasting.prepared_max ?? "—";
-  } else {
-    sc.classList.add("hide");
-  }
 }
 
 // ---------- tabs ----------
@@ -148,6 +85,7 @@ function switchTab(id) {
 
 // ---------- overview panel ----------
 function renderOverview() {
+  const current = getCurrent();
   if (!current) return;
   $("#iName").value = current.name ?? "";
   $("#iLevel").value = current.level ?? 1;
@@ -183,6 +121,8 @@ function renderOverview() {
 
 // ---------- abilities panel ----------
 function renderAbilities() {
+  const current = getCurrent();
+  const derived = getDerived();
   if (!current) return;
   current.abilities = current.abilities || {};
   // table rows
@@ -226,6 +166,7 @@ function renderAbilities() {
 
 // ---------- items panel ----------
 function renderItems() {
+  const current = getCurrent();
   if (!current) return;
   current.items = current.items || [];
   const body = $("#itemsBody");
@@ -263,6 +204,7 @@ function renderItems() {
 
 // ---------- feats panel ----------
 function renderFeats() {
+  const current = getCurrent();
   if (!current) return;
   current.feats = current.feats || [];
   const body = $("#featsBody");
@@ -288,6 +230,7 @@ function renderFeats() {
 
 // ---------- notes panel ----------
 function renderNotes() {
+  const current = getCurrent();
   if (!current) return;
   $("#notesArea").value = current.notes || "";
   $("#notesArea").oninput = () => { current.notes = $("#notesArea").value; renderRaw(); };
@@ -297,6 +240,8 @@ function renderNotes() {
 function levelKeys() { return ["C","1","2","3","4","5","6","7","8","9"]; }
 
 function renderSpells() {
+  const current = getCurrent();
+  const derived = getDerived();
   if (!current) return;
   let sb = getSpellbook();
   if (!sb) sb = ensureSpellbook();
@@ -414,19 +359,22 @@ function enforcePreparedCap(sb, cap) {
 
 // ---------- raw panel ----------
 function renderRaw() {
+  const current = getCurrent();
   $("#rawOut").textContent = current ? JSON.stringify(current, null, 2) : "(no character loaded)";
 }
 
 // ---------- derive/validate ----------
 async function runDerive() {
+  const current = getCurrent();
   if (!current) return;
   try {
-    derived = await apiDerive(current);
+    const result = await apiDerive(current);
+    setDerived(result);
     updateSummary();
     renderSpells();
     renderRaw();
   } catch (e) {
-    derived = null;
+    setDerived(null);
     updateSummary();
     toast("Derive failed: " + e.message);
     logError(e, "derive");
@@ -434,6 +382,7 @@ async function runDerive() {
 }
 
 async function runValidate() {
+  const current = getCurrent();
   if (!current) return [];
   try {
     const res = await apiValidate(current);
@@ -466,20 +415,20 @@ export async function boot() {
 
   try {
     const data = await apiModules();
-    modules = data.modules || [];
+    const moduleList = setModules(data.modules || []);
     const sel = $("#moduleSelect");
     sel.innerHTML = "";
 
-    modules.forEach((m) => {
+    moduleList.forEach((m) => {
       const opt = el("option", { value: m.id }, `${m.name} (${m.version})`);
       sel.append(opt);
     });
 
     const saved = localStorage.getItem("dndcs.moduleId");
-    let chosen = saved && modules.find((m) => m.id === saved) ? saved : null;
+    let chosen = saved && moduleList.find((m) => m.id === saved) ? saved : null;
     if (!chosen) {
-      const stock = modules.find((m) => m.id === "fivee_stock");
-      chosen = stock ? stock.id : modules[0]?.id || "";
+      const stock = moduleList.find((m) => m.id === "fivee_stock");
+      chosen = stock ? stock.id : moduleList[0]?.id || "";
     }
 
     sel.value = chosen;
@@ -494,8 +443,9 @@ export async function boot() {
   $("#newCharBtn").onclick = async () => {
     const module_id = $("#moduleSelect").value;
     try {
-      current = await apiNewCharacter(module_id, "New Hero");
-      derived = null;
+      const character = await apiNewCharacter(module_id, "New Hero");
+      setCurrent(character);
+      setDerived(null);
       updateSummary();
       renderOverview();
       renderAbilities();
@@ -516,8 +466,8 @@ export async function boot() {
     const f = e.target.files?.[0];
     if (!f) return;
     try {
-      current = JSON.parse(await f.text());
-      derived = null;
+      setCurrent(JSON.parse(await f.text()));
+      setDerived(null);
       updateSummary();
       renderOverview();
       renderAbilities();
@@ -535,6 +485,7 @@ export async function boot() {
   });
 
   $("#saveBtn").onclick = async () => {
+    const current = getCurrent();
     if (!current) return toast("Nothing to save");
     const issues = await runValidate();
     if (issues.length) {
